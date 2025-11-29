@@ -32,7 +32,7 @@ tidy:
 
 # Install development tools
 tools:
-	go install github.com/cosmtrek/air@latest
+	go install github.com/air-verse/air@latest
 	go install github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 	go install github.com/swaggo/swag/cmd/swag@latest
 
@@ -50,8 +50,11 @@ run:
 # Development mode with hot reload
 dev:
 	@echo "Running $(APP_NAME) in development mode with hot reload..."
-	@which air > /dev/null || (echo "Installing air..." && go install github.com/cosmtrek/air@latest)
-	air
+	@if ! command -v air >/dev/null 2>&1; then \
+		echo "Installing air..."; \
+		go install github.com/air-verse/air@latest; \
+	fi
+	$(shell go env GOPATH)/bin/air
 
 # Run tests
 test:
@@ -74,25 +77,34 @@ clean:
 # Database migration up
 migrate-up:
 	@echo "Running database migrations..."
-	@which migrate > /dev/null || (echo "Installing migrate..." && go install github.com/golang-migrate/migrate/v4/cmd/migrate@latest)
-	migrate -path ./migrations -database "postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(DB_SSLMODE)" up
+	@if ! command -v migrate >/dev/null 2>&1; then \
+		echo "Installing migrate..."; \
+		go install github.com/golang-migrate/migrate/v4/cmd/migrate@latest; \
+	fi
+	$(shell go env GOPATH)/bin/migrate -path ./migrations -database "postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(DB_SSLMODE)" up
 
 # Database migration down
 migrate-down:
 	@echo "Rolling back database migrations..."
-	@which migrate > /dev/null || (echo "Installing migrate..." && go install github.com/golang-migrate/migrate/v4/cmd/migrate@latest)
-	migrate -path ./migrations -database "postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(DB_SSLMODE)" down
+	@if ! command -v migrate >/dev/null 2>&1; then \
+		echo "Installing migrate..."; \
+		go install github.com/golang-migrate/migrate/v4/cmd/migrate@latest; \
+	fi
+	$(shell go env GOPATH)/bin/migrate -path ./migrations -database "postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(DB_SSLMODE)" down
 
 # Create new migration
 migration-new:
 	@read -p "Enter migration name: " name; \
-	migrate create -ext sql -dir ./migrations -seq $$name
+	$(shell go env GOPATH)/bin/migrate create -ext sql -dir ./migrations -seq $$name
 
 # Generate Swagger documentation
 swagger:
 	@echo "Generating Swagger documentation..."
-	@which swag > /dev/null || (echo "Installing swag..." && go install github.com/swaggo/swag/cmd/swag@latest)
-	swag init -g cmd/server/main.go -o docs
+	@if ! command -v swag >/dev/null 2>&1; then \
+		echo "Installing swag..."; \
+		go install github.com/swaggo/swag/cmd/swag@latest; \
+	fi
+	$(shell go env GOPATH)/bin/swag init -g cmd/server/main.go -o docs
 
 # Start docker services
 docker-up:
