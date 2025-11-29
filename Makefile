@@ -1,9 +1,15 @@
-.PHONY: help build run dev test clean migrate-up migrate-down docker-up docker-down deps tidy
+.PHONY: help build run dev test clean migrate-up migrate-down docker-up docker-down deps tidy onboard-admin
 
 # Variables
 APP_NAME := openvdo
 BUILD_DIR := ./bin
 MAIN_FILE := ./cmd/server/main.go
+
+# Include environment variables from .env file
+ifneq (,$(wildcard ./.env))
+    include .env
+    export
+endif
 
 # Default target
 help:
@@ -21,6 +27,7 @@ help:
 	@echo "  tidy        - Clean up dependencies"
 	@echo "  swagger     - Generate Swagger documentation"
 	@echo "  tools       - Install development tools"
+	@echo "  onboard-admin - Create initial super admin user"
 
 # Install dependencies
 deps:
@@ -78,17 +85,22 @@ clean:
 migrate-up:
 	@echo "Running database migrations..."
 	@if ! command -v migrate >/dev/null 2>&1; then \
-		echo "Installing migrate..."; \
-		go install github.com/golang-migrate/migrate/v4/cmd/migrate@latest; \
+		echo "Installing migrate with PostgreSQL driver..."; \
+		go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest; \
 	fi
+	@if [ -z "$(DB_USER)" ] || [ -z "$(DB_PASSWORD)" ] || [ -z "$(DB_HOST)" ] || [ -z "$(DB_PORT)" ] || [ -z "$(DB_NAME)" ] || [ -z "$(DB_SSLMODE)" ]; then \
+		echo "Error: Database environment variables not set. Please set DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME, DB_SSLMODE"; \
+		exit 1; \
+	fi
+	@echo "Connecting to: postgres://$(DB_USER):***@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(DB_SSLMODE)"
 	$(shell go env GOPATH)/bin/migrate -path ./migrations -database "postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(DB_SSLMODE)" up
 
 # Database migration down
 migrate-down:
 	@echo "Rolling back database migrations..."
 	@if ! command -v migrate >/dev/null 2>&1; then \
-		echo "Installing migrate..."; \
-		go install github.com/golang-migrate/migrate/v4/cmd/migrate@latest; \
+		echo "Installing migrate with PostgreSQL driver..."; \
+		go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest; \
 	fi
 	$(shell go env GOPATH)/bin/migrate -path ./migrations -database "postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(DB_SSLMODE)" down
 
@@ -143,3 +155,39 @@ security:
 	@echo "Checking for security issues..."
 	@which gosec > /dev/null || (echo "Installing gosec..." && go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest)
 	gosec ./...
+
+# Onboard initial super admin user
+onboard-admin:
+	@echo "Setting up initial super admin user..."
+	@read -p "Enter admin email: " email; \
+	read -s -p "Enter admin password: " password; \
+	echo ""; \
+	read -p "Enter admin name: " name; \
+	read -p "Enter organization name: " org_name; \
+	read -p "Enter organization description (optional): " org_desc; \
+	psql "$$DATABASE_URL" -c "\\\
+		DO \\$$\\$$\\\
+		DECLARE\\\
+			admin_user_id UUID;\\\
+			org_id UUID;\\\
+		BEGIN\\\
+			-- Create admin user\\\
+			INSERT INTO users (email, password_hash, name, email_verified)\\\
+			VALUES ('$$email', crypt('$$password', gen_salt('bf')), '$$name', TRUE)\\\
+			RETURNING id INTO admin_user_id;\\\
+			\\\
+			-- Create organization\\\
+			INSERT INTO organizations (name, description)\\\
+			VALUES ('$$org_name', '$$org_desc')\\\
+			RETURNING id INTO org_id;\\\
+			\\\
+			-- Assign admin as owner of organization\\\
+			INSERT INTO user_org_roles (user_id, organization_id, role)\\\
+			VALUES (admin_user_id, org_id, 'owner');\\\
+			\\\
+			RAISE NOTICE 'Super admin user created successfully';\\\
+			RAISE NOTICE 'Email: %', '$$email';\\\
+			RAISE NOTICE 'Organization: %', '$$org_name';\\\
+		END;\\\
+		\\$$\\$$;"
+	@echo "Admin user onboarded successfully!"
