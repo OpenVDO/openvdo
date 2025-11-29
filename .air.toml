@@ -1,0 +1,55 @@
+root = "."
+testdata_dir = "testdata"
+tmp_dir = "tmp"
+
+[build]
+  # Just plain old shell command. You could use `make` as well.
+  cmd = "go build -o ./tmp/main ./cmd/server"
+  # Binary file yields from `cmd`.
+  bin = "tmp/main"
+  # Customize binary.
+  full_bin = "./tmp/main"
+  # Watch these filename extensions.
+  include_ext = ["go", "tpl", "tmpl", "html", "yaml", "yml"]
+  # Ignore these filename extensions or directories.
+  exclude_ext = ["_test.go"]
+  # Watch these directories if you specified.
+  include_dir = []
+  # Exclude these directories.
+  exclude_dir = ["assets", "tmp", "vendor", "testdata", "migrations"]
+  # Watch these files.
+  include_file = []
+  # Exclude these files.
+  exclude_file = []
+  # This log file places in your tmp_dir.
+  log = "air.log"
+  # It's not necessary to trigger build each time.
+  delay = 1000 # ms
+  # Stop running old binary when build errors occur.
+  stop_on_error = true
+  # Send interrupt signal before killing process (windows does not support this feature)
+  send_interrupt = false
+  # Delay after sending interrupt signal
+  kill_delay = "0s"
+
+[log]
+  # Show log time
+  time = true
+  # Only show main log (silences watcher, build, runner)
+  main_only = false
+
+[color]
+  # Customize each part's color. If no color found, use the raw app log.
+  main = "magenta"
+  watcher = "cyan"
+  build = "yellow"
+  runner = "green"
+
+[misc]
+  # Delete tmp directory on exit
+  clean_on_exit = false
+
+[screen]
+  keep_scroll = true
+  # Rebuild delay in seconds
+  rebuild_delay = 0
