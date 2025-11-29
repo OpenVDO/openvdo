@@ -1,3 +1,6 @@
+-- Enable pgcrypto extension for password hashing
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- Create users table for multi-tenant authentication
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

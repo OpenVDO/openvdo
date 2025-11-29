@@ -159,35 +159,6 @@ security:
 # Onboard initial super admin user
 onboard-admin:
 	@echo "Setting up initial super admin user..."
-	@read -p "Enter admin email: " email; \
-	read -s -p "Enter admin password: " password; \
-	echo ""; \
-	read -p "Enter admin name: " name; \
-	read -p "Enter organization name: " org_name; \
-	read -p "Enter organization description (optional): " org_desc; \
-	psql "$$DATABASE_URL" -c "\\\
-		DO \\$$\\$$\\\
-		DECLARE\\\
-			admin_user_id UUID;\\\
-			org_id UUID;\\\
-		BEGIN\\\
-			-- Create admin user\\\
-			INSERT INTO users (email, password_hash, name, email_verified)\\\
-			VALUES ('$$email', crypt('$$password', gen_salt('bf')), '$$name', TRUE)\\\
-			RETURNING id INTO admin_user_id;\\\
-			\\\
-			-- Create organization\\\
-			INSERT INTO organizations (name, description)\\\
-			VALUES ('$$org_name', '$$org_desc')\\\
-			RETURNING id INTO org_id;\\\
-			\\\
-			-- Assign admin as owner of organization\\\
-			INSERT INTO user_org_roles (user_id, organization_id, role)\\\
-			VALUES (admin_user_id, org_id, 'owner');\\\
-			\\\
-			RAISE NOTICE 'Super admin user created successfully';\\\
-			RAISE NOTICE 'Email: %', '$$email';\\\
-			RAISE NOTICE 'Organization: %', '$$org_name';\\\
-		END;\\\
-		\\$$\\$$;"
-	@echo "Admin user onboarded successfully!"
+	@echo "Note: Make sure database migrations have been run (make migrate-up)"
+	@echo ""
+	@./scripts/onboard-admin.sh
