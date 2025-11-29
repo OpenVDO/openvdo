@@ -1,8 +1,8 @@
 package routes
 
 import (
-	"database/sql"
-
+	"openvdo/internal/database"
+	"openvdo/internal/handlers"
 	"openvdo/internal/middleware"
 
 	"github.com/gin-gonic/gin"
@@ -13,15 +13,15 @@ import (
 )
 
 type Server struct {
-	router      *gin.Engine
-	db          *sql.DB
-	redisClient *redis.Client
+	router       *gin.Engine
+	poolManager  *database.StatelessPoolManager
+	redisClient  *redis.Client
 }
 
-func Setup(router *gin.Engine, db *sql.DB, redisClient *redis.Client) {
+func Setup(router *gin.Engine, poolManager *database.StatelessPoolManager, redisClient *redis.Client) {
 	server := &Server{
 		router:      router,
-		db:          db,
+		poolManager: poolManager,
 		redisClient: redisClient,
 	}
 
@@ -29,22 +29,34 @@ func Setup(router *gin.Engine, db *sql.DB, redisClient *redis.Client) {
 	router.Use(middleware.Recovery())
 	router.Use(middleware.CORS())
 
-	router.GET("/health", server.healthCheck)
+	// Health check endpoints (no authentication required)
+	router.GET("/health", handlers.HealthCheck)
+	router.GET("/health/db", database.StatelessHealthCheckHandler(server.poolManager))
+	router.GET("/stats/db", database.StatelessMetricsHandler(server.poolManager))
 
-	// Swagger documentation
+	// Swagger documentation (no authentication required)
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-}
 
-// HealthCheck godoc
-// @Summary Health Check
-// @Description Check if the server is running
-// @Tags health
-// @Produce json
-// @Success 200 {object} map[string]string
-// @Router /health [get]
-func (s *Server) healthCheck(c *gin.Context) {
-	c.JSON(200, gin.H{
-		"status":  "healthy",
-		"message": "OpenVDO server is running",
-	})
+	// API endpoints with tenant database access
+	api := router.Group("/api/v1")
+	{
+		// Apply database middleware only to API routes
+		api.Use(database.StatelessDatabaseMiddleware(server.poolManager))
+
+		// Organizations endpoints (require authentication)
+		orgs := api.Group("/organizations")
+		orgs.Use(database.StatelessRequireAuth())
+		{
+			orgs.GET("", handlers.StatelessGetOrganizations)
+			orgs.POST("", handlers.StatelessCreateOrganization)
+		}
+
+		// Session management endpoints (require authentication)
+		sessions := api.Group("/sessions")
+		sessions.Use(database.StatelessRequireAuth())
+		{
+			sessions.GET("", handlers.StatelessGetUserSession)
+			sessions.DELETE("", handlers.StatelessInvalidateSession)
+		}
+	}
 }

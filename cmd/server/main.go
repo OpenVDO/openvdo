@@ -27,22 +27,22 @@ func main() {
 
 	cfg := config.Load()
 
-	db, err := database.Connect(cfg.Database)
-	if err != nil {
-		log.Fatal("Failed to connect to database:", err)
+	// Initialize the stateless connection pool manager
+	if err := database.InitPoolManager(cfg.Database, cfg.Redis); err != nil {
+		log.Fatal("Failed to initialize stateless pool manager:", err)
 	}
-	defer database.Close(db)
+	defer database.ClosePoolManager()
 
-	redisClient := database.ConnectRedis(cfg.Redis)
-	defer database.CloseRedis(redisClient)
-
+	
 	if gin.Mode() == gin.ReleaseMode {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
 	r := gin.New()
 
-	routes.Setup(r, db, redisClient)
+	// Get pool manager for routes
+	poolManager := database.GetPoolManager()
+	routes.Setup(r, poolManager, nil) // Redis is managed by pool manager
 
 	port := os.Getenv("PORT")
 	if port == "" {

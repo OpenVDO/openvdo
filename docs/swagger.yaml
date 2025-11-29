@@ -6,19 +6,196 @@ info:
   title: OpenVDO API
   version: "1.0"
 paths:
-  /health:
+  /api/v1/organizations:
     get:
-      description: Check if the server is running
+      description: Retrieves all organizations for the authenticated user using stateless
+        connection pooling with RLS filtering
       produces:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Organizations retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
           schema:
             additionalProperties:
               type: string
             type: object
-      summary: Health Check
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get user organizations
+      tags:
+      - organizations
+    post:
+      consumes:
+      - application/json
+      description: Creates a new organization using stateless connection pooling
+      parameters:
+      - description: Organization name
+        in: body
+        name: name
+        required: true
+        schema:
+          type: string
+      - description: Organization description
+        in: body
+        name: description
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Organization created successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request body
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Create organization
+      tags:
+      - organizations
+  /api/v1/sessions:
+    delete:
+      description: Invalidates the current user's session
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Session invalidated
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Invalidate user session
+      tags:
+      - sessions
+    get:
+      description: Retrieves the current user's session information including organization
+        and role details
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User session retrieved
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Session not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get user session
+      tags:
+      - sessions
+  /health:
+    get:
+      description: Checks if the server is running and responds with basic status
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Server is healthy
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Basic health check
       tags:
       - health
+  /health/db:
+    get:
+      description: Checks the health of database connection pools
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Database pools are healthy
+          schema:
+            additionalProperties: true
+            type: object
+        "503":
+          description: Database pool not available
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Database pool health check
+      tags:
+      - health
+  /stats/db:
+    get:
+      description: Returns detailed statistics about database connection pools
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Database pool statistics
+          schema:
+            additionalProperties: true
+            type: object
+        "503":
+          description: Database pool not available
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Database pool statistics
+      tags:
+      - stats
 swagger: "2.0"
