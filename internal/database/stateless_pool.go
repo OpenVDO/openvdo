@@ -311,8 +311,15 @@ func (spm *StatelessPoolManager) GetHealth() HealthStatus {
 	// Check Redis health if available
 	if spm.redis != nil {
 		if err := spm.redis.Ping(ctx).Err(); err != nil {
+			status.RedisHealthy = false
+			status.Healthy = false
 			status.Errors = append(status.Errors, "Redis ping failed: "+err.Error())
+		} else {
+			status.RedisHealthy = true
 		}
+	} else {
+		status.RedisHealthy = false
+		status.Errors = append(status.Errors, "Redis client not initialized")
 	}
 
 	// Check connection pool health
