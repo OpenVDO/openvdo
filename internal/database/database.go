@@ -14,10 +14,8 @@ import (
 	_ "github.com/lib/pq"
 )
 
-// PoolManagerInstance holds the global stateless pool manager
 var PoolManagerInstance *StatelessPoolManager
 
-// InitPoolManager initializes the global stateless connection pool manager
 func InitPoolManager(dbConfig config.Database, redisConfig config.Redis) error {
 	pm, err := NewStatelessPoolManager(dbConfig, ConnectRedis(redisConfig))
 	if err != nil {
@@ -27,7 +25,6 @@ func InitPoolManager(dbConfig config.Database, redisConfig config.Redis) error {
 	return nil
 }
 
-// ClosePoolManager closes the global pool manager
 func ClosePoolManager() error {
 	if PoolManagerInstance != nil {
 		return PoolManagerInstance.Close()
@@ -35,12 +32,10 @@ func ClosePoolManager() error {
 	return nil
 }
 
-// GetPoolManager returns the global stateless pool manager
 func GetPoolManager() *StatelessPoolManager {
 	return PoolManagerInstance
 }
 
-// Connect creates a basic database connection (backward compatibility)
 func Connect(cfg config.Database) (*sql.DB, error) {
 	dsn := cfg.DSN()
 
@@ -53,7 +48,6 @@ func Connect(cfg config.Database) (*sql.DB, error) {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	// Use the configuration values
 	db.SetMaxOpenConns(cfg.MaxOpenConns)
 	db.SetMaxIdleConns(cfg.MaxIdleConns)
 	db.SetConnMaxLifetime(cfg.ConnMaxLifetime)
@@ -64,7 +58,6 @@ func Connect(cfg config.Database) (*sql.DB, error) {
 	return db, nil
 }
 
-// Close closes a database connection
 func Close(db *sql.DB) {
 	if db != nil {
 		if err := db.Close(); err != nil {
@@ -73,7 +66,6 @@ func Close(db *sql.DB) {
 	}
 }
 
-// ConnectRedis creates a Redis client
 func ConnectRedis(cfg config.Redis) *redis.Client {
 	client := redis.NewClient(&redis.Options{
 		Addr:         cfg.Address(),
@@ -84,7 +76,6 @@ func ConnectRedis(cfg config.Redis) *redis.Client {
 		PoolSize:     10,
 	})
 
-	// Test connection
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -97,7 +88,6 @@ func ConnectRedis(cfg config.Redis) *redis.Client {
 	return client
 }
 
-// CloseRedis closes a Redis client
 func CloseRedis(client *redis.Client) {
 	if client != nil {
 		if err := client.Close(); err != nil {
@@ -106,7 +96,6 @@ func CloseRedis(client *redis.Client) {
 	}
 }
 
-// GetTenantDB creates a tenant-aware database connection (stateless version)
 func GetTenantDB(ctx context.Context, userID string) (*StatelessTenantDB, error) {
 	if PoolManagerInstance == nil {
 		return nil, fmt.Errorf("pool manager not initialized")
@@ -120,8 +109,6 @@ func GetTenantDB(ctx context.Context, userID string) (*StatelessTenantDB, error)
 	return PoolManagerInstance.NewTenantDB(ctx, userUUID)
 }
 
-// parseUUID is a helper to parse UUID strings
 func parseUUID(s string) (uuid.UUID, error) {
-	// Import uuid package here to avoid import cycle
 	return uuid.Parse(s)
 }
