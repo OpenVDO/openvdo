@@ -19,13 +19,11 @@ type Database struct {
 	Name     string
 	SSLMode  string
 
-	// Connection Pool Configuration
 	MaxOpenConns    int           `default:"100"`
 	MaxIdleConns    int           `default:"10"`
 	ConnMaxLifetime time.Duration `default:"5m"`
 	ConnMaxIdleTime time.Duration `default:"30s"`
 
-	// Tenant Pool Configuration
 	MaxTenantPools  int           `default:"50"`
 	PoolIdleTimeout time.Duration `default:"10m"`
 }
@@ -45,19 +43,16 @@ type Config struct {
 func Load() *Config {
 	k := koanf.New(".")
 
-	// Load configuration file if exists
 	if _, err := os.Stat("config.yaml"); err == nil {
 		if err := k.Load(file.Provider("config.yaml"), yaml.Parser()); err != nil {
 			fmt.Printf("Warning: Could not load config.yaml: %v\n", err)
 		}
 	}
 
-	// Load environment variables
 	if err := k.Load(env.Provider("", ".", nil), nil); err != nil {
 		fmt.Printf("Warning: Could not load environment variables: %v\n", err)
 	}
 
-	// Build config using koanf with fallback to environment variables and defaults
 	return &Config{
 		Database: Database{
 			Host:     getEnvWithKoanf(k, "DB_HOST", "DB_HOST", "localhost"),
@@ -67,13 +62,11 @@ func Load() *Config {
 			Name:     getEnvWithKoanf(k, "DB_NAME", "DB_NAME", "openvdo"),
 			SSLMode:  getEnvWithKoanf(k, "DB_SSLMODE", "DB_SSLMODE", "disable"),
 
-			// Connection Pool Configuration
 			MaxOpenConns:    getIntWithKoanf(k, "DB_MAX_OPEN_CONNS", "DB_MAX_OPEN_CONNS", 100),
 			MaxIdleConns:    getIntWithKoanf(k, "DB_MAX_IDLE_CONNS", "DB_MAX_IDLE_CONNS", 10),
 			ConnMaxLifetime: getDurationWithKoanf(k, "DB_CONN_MAX_LIFETIME", "DB_CONN_MAX_LIFETIME", 5*time.Minute),
 			ConnMaxIdleTime: getDurationWithKoanf(k, "DB_CONN_MAX_IDLE_TIME", "DB_CONN_MAX_IDLE_TIME", 30*time.Second),
 
-			// Tenant Pool Configuration
 			MaxTenantPools:  getIntWithKoanf(k, "DB_MAX_TENANT_POOLS", "DB_MAX_TENANT_POOLS", 50),
 			PoolIdleTimeout: getDurationWithKoanf(k, "DB_POOL_IDLE_TIMEOUT", "DB_POOL_IDLE_TIMEOUT", 10*time.Minute),
 		},
@@ -121,29 +114,23 @@ func getEnvAsDuration(key string, defaultValue time.Duration) time.Duration {
 }
 
 func getEnvWithKoanf(k *koanf.Koanf, envKey, koanfKey, defaultValue string) string {
-	// Try koanf first (config file or environment variable)
 	if value := k.String(koanfKey); value != "" {
 		return value
 	}
-	// Fallback to direct environment variable
 	return getEnv(envKey, defaultValue)
 }
 
 func getIntWithKoanf(k *koanf.Koanf, envKey, koanfKey string, defaultValue int) int {
-	// Try koanf first
 	if value := k.Int(koanfKey); value != 0 {
 		return value
 	}
-	// Fallback to environment variable
 	return getEnvAsInt(envKey, defaultValue)
 }
 
 func getDurationWithKoanf(k *koanf.Koanf, envKey, koanfKey string, defaultValue time.Duration) time.Duration {
-	// Try koanf first
 	if value := k.Duration(koanfKey); value != 0 {
 		return value
 	}
-	// Fallback to environment variable
 	return getEnvAsDuration(envKey, defaultValue)
 }
 
